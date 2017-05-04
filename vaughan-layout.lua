@@ -1,5 +1,24 @@
 require('util')
 
+-- Watch for changes to screen layout.
+------------------------------------------------------------------------------
+
+local lastScreenWatchEvent = os.time()
+local screenWatcher = hs.screen.watcher.new(function()
+  print('screens changed!')
+  
+  -- Debounce for 2 seconds and then run layout function.
+  local DEBOUNCE_DELAY = 2000
+  if (os.clock() - lastScreenWatchEvent > DEBOUNCE_DELAY) then
+    print('should do layout')
+  end
+  
+  lastScreenWatchEvent = os.clock()
+  
+end)
+
+screenWatcher:start()
+
 -- Fix stuck modifiers.
 ------------------------------------------------------------------------------
 
@@ -16,6 +35,9 @@ hs.hotkey.bind({"cmd", "alt", "ctrl"}, "N", function()
 end)
 
 ------------------------------------------------------------------------------
+
+-- We use this hash instead of `hs.layout` because we can invert things
+-- depending on which side the secondary screen (or iPad) is placed.
 
 positions = {
   maximized = hs.layout.maximized,
@@ -54,37 +76,154 @@ titles = {
   hyper = 'Hyper',
   outlook = 'Microsoft Outlook',
   calendar = 'Calendar',
+  finder = 'Finder',
 }
 
 commonWindowLayout = {
-  {'WhatsApp', nil, laptopScreen, hs.layout.right50, nil, nil},
-  {'Messenger', nil, laptopScreen, hs.layout.right50, nil, nil},
-  {'Quip', nil, laptopScreen, hs.layout.right50, nil, nil},
-  {'Slack', nil, laptopScreen, hs.layout.right50, nil, nil},
+  {'WhatsApp', nil, laptopScreen, positions.right50, nil, nil},
+  {'Messenger', nil, laptopScreen, positions.right50, nil, nil},
+  {'Quip', nil, laptopScreen, positions.right50, nil, nil},
+  {'Slack', nil, laptopScreen, positions.right50, nil, nil},
   {'Spotify', nil, laptopScreen, positions.centered, nil, nil},
   {'iTunes', nil, laptopScreen, positions.centered, nil, nil},
   {titles.outlook, nil, laptopScreen, positions.centered, nil, nil},
   {titles.calendar, nil, laptopScreen, positions.centered, nil, nil},
+  {titles.finder, nil, laptopScreen, positions.left50, nil, nil},
 }
 
 ------------------------------------------------------------------------------
+
+-- DEBUG!
+-- hs.hotkey.bind({"cmd", "alt", "ctrl"}, "0", function()
+--   findIpadScreen()
+-- end)
+
+function compareSize(a, b)
+  return a.w == b.w and a.h == b.h
+end
+
+local inspect = require('inspect')
+
+local laptopDisplay = hs.geometry.new('1920x1200')
+local monitor1440p = hs.geometry.new('2560x1440')
+local monitor1080pVertical = hs.geometry.new('1080x1920')
+local iPadDuetStandard = hs.geometry.new('1024x768')
+local projector720p = hs.geometry.new('1280x720')
+
+function detectScreenType(screen)
+  local screenFrame = screen:fullFrame()
+  local screenSize = screenFrame.size
+  
+  local out
+
+  if (compareSize(screenSize, iPadDuetStandard)) then
+    out = 'ipad'
+  elseif (compareSize(screenSize, monitor1440p)) then
+    out = '1440p'
+  elseif (screenSize:equals(monitor1080pVertical)) then
+    out = 'tertiary'
+  elseif (screenSize:equals(laptopDisplay)) then
+    out = 'laptop'
+  elseif (screenSize:equals(projector720p)) then
+    out = '720p'
+  end
+  
+  print('w', screenSize.w, 'h', screenSize.h, name)
+  
+  return name
+  
+end
+
+-- function getAllScreens()
+--     local allScreens = hs.screen.allScreens()
+--     local out = {}
+--     for _, screen in pairs(allScreens) do
+--       out.insert(screen, detectScreenType(screen))
+--     end
+--     return out
+-- end
+
+function isIpadConnected()
+  local allScreens = hs.screen.allScreens()
+  for _, screen in pairs(allScreens) do
+    local screenFrame = screen:fullFrame()
+    local screenSize = screenFrame.size
+    if (compareSize(screenSize, iPadDuetStandard)) then
+      return true
+    end
+  end
+  return false
+end
+
+function printScreens()
+  local allScreens = hs.screen.allScreens()
+  print(inspect(allScreens))
+  print('Found monitors:')
+  for _, screen in pairs(allScreens) do
+    detectScreenType(screen)
+  end
+  print('---')
+end
+
+printScreens()
 
 function universalLayout()
   local allScreens = hs.screen.allScreens()
   local screenCount = tableLength(allScreens)
   local windowLayout
+  
   print('Screen count:', screenCount)
-  if (screenCount == 4) then
-    windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
+  print('Dimensions:', dimensions)
+  
+  if (screenCount == 5) then
+    
+    if (isIpadConnected()) then
+      -- a. Laptop, Main, Secondary, Tertiary, iPad
+      windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
+    else
+      -- b. Laptop, Main, Secondary, Tertiary, Projector
+      windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
+    end
+  
+  elseif (screenCount == 4) then
+    
+    if (isIpadConnected()) then
+      -- a. Laptop, Main, Secondary, iPad
+      windowLayout = screenLayoutPrimaryAnd2xU2515H()
+    else
+      -- b. Laptop, Main, Secondary, Tertiary
+      windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
+    end
+  
   elseif (screenCount == 3) then
-    windowLayout = screenLayoutPrimaryAnd2xU2515H()
+    
+    if (isIpadConnected()) then
+      -- a. Laptop, Main, iPad
+      windowLayout = screenLayoutPrimaryAnd1xU2515H()
+    else
+      -- b. Laptop, Main, Secondary
+      windowLayout = screenLayoutPrimaryAnd2xU2515H()
+    end
+  
   elseif (screenCount == 2) then
+
     local secondScreen = allScreens[2]
-    -- TODO: Check resolution to detect if main monitor or iPad.
-    windowLayout = screenLayoutPrimaryAndIPad()
-    -- windowLayout = screenLayoutPrimaryAnd1xU2515H()
+    if (compareSize(secondScreen, iPadScreen)) then
+      -- a. Laptop, iPad (Duet)
+      windowLayout = screenLayoutPrimaryAndIPad()
+    elseif (compareSize(secondScreen, projector720p)) then
+      -- b. Laptop, Projector/AppleTV
+      windowLayout = screenLayoutPrimary()
+    else
+      -- c. Laptop, Main
+      windowLayout = screenLayoutPrimaryAnd1xU2515H()
+    end
+    
   elseif (screenCount == 1) then
+    
+    -- Only laptop display.
     windowLayout = screenLayoutPrimary()
+    
   end
 
   local layout = {}
@@ -92,8 +231,11 @@ function universalLayout()
   tableConcat(layout, windowLayout)
   hs.layout.apply(layout)
   
-  -- Arrange iTerm windows.
-  --------------------
+  arrangeItermWindows(screenCount)
+
+end
+
+function arrangeItermWindows(screenCount)
 
   if (screenCount == 3 or screenCount == 4) then
 
@@ -115,7 +257,7 @@ function universalLayout()
     
     local i = 0
     for i, win in pairs(iTermWindows) do
-      -- iterate between 
+      -- iterate between
       -- local position = positionDefs[i % gridSize + 1] -- `+1` because Lua indexes start at 1.
       local position = positions.right50
       -- print(win)
@@ -127,20 +269,43 @@ function universalLayout()
     app:mainWindow():move(positions.left50, rightScreen)
   end
   
-  --------------------
-
 end
 
 ------------------------------------------------------------------------------
+
+function getSecondScreen()
+  local centerScreen = hs.screen.primaryScreen():toNorth()
+  -- strict - disregard screens that lie completely above or below this one
+  local strict = true
+  local screenEast = centerScreen:toEast(null, strict)
+  local screenWest = centerScreen:toWest(null, strict)
+  local secondScreen
+  local thirdScreen
+  
+  local targetSecondScreenSize = monitor1440p
+  
+  local screenEastSize = screenEast:fullFrame().size
+  
+  if (compareSize(screenEastSize, targetSecondScreenSize)) then
+    -- Second screen is east of center screen.
+    secondScreen = screenEast
+    thirdScreen = screenWest
+  else
+    -- Second screen is west of center screen.
+    secondScreen = screenWest
+    thirdScreen = screenEast
+  end
+  
+  return secondScreen, thirdScreen
+  
+end
 
 function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
   hs.alert.show("screenLayoutPrimaryAnd2xU2515HAnd1xLG layout")
   local laptopScreen = "Color LCD" -- hs.screen.primaryScreen()
 
-  -- local centerScreen = hs.screen.allScreens()[2]
   local centerScreen = hs.screen.primaryScreen():toNorth()
-  local rightScreen = hs.screen.primaryScreen():toEast()
-  local leftScreen = centerScreen:toWest()
+  local secondScreen, thirdScreen = getSecondScreen()
 
   local chrome1,chrome2 = hs.application.find'Google Chrome'
 
@@ -155,13 +320,13 @@ function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
     {titles.dash, nil, laptopScreen, positions.centeredAlt, nil, nil},
     -- {titles.atom, nil, centerScreen, hs.layout.left50, nil, nil},
     -- {titles.atomBeta, nil, centerScreen, hs.layout.left50, nil, nil},
-    {titles.atom, nil, leftScreen, hs.layout.maximized, nil, nil},
-    {titles.atomBeta, nil, leftScreen, hs.layout.maximized, nil, nil},
+    {titles.atom, nil, thirdScreen, hs.layout.maximized, nil, nil},
+    {titles.atomBeta, nil, thirdScreen, hs.layout.maximized, nil, nil},
     
     {titles.sourceTree, nil, centerScreen, positions.centered, nil, nil},
     -- TODO: One on each monitor. windowTitleComparator?
     -- {titles.iterm, nil, rightScreen, hs.layout.right50, nil, nil}, -- Done manually.
-    {titles.hyper, nil, rightScreen, hs.layout.right50, nil, nil},
+    {titles.hyper, nil, secondScreen, hs.layout.right50, nil, nil},
   }
   return windowLayout
 end
@@ -174,7 +339,7 @@ function screenLayoutPrimaryAnd2xU2515H()
 
   -- local centerScreen = hs.screen.allScreens()[2]
   local centerScreen = hs.screen.primaryScreen():toNorth()
-  local rightScreen = hs.screen.primaryScreen():toEast()
+  local secondScreen, thirdScreen = getSecondScreen()
 
   local chrome1,chrome2 = hs.application.find'Google Chrome'
 
@@ -192,7 +357,7 @@ function screenLayoutPrimaryAnd2xU2515H()
     {titles.sourceTree, nil, centerScreen, positions.centered, nil, nil},
     -- TODO: One on each monitor. windowTitleComparator?
     -- {titles.iterm, nil, rightScreen, hs.layout.right50, nil, nil}, -- Done manually.
-    {titles.hyper, nil, rightScreen, hs.layout.right50, nil, nil},
+    {titles.hyper, nil, secondScreen, hs.layout.right50, nil, nil},
   }
   return windowLayout
 end

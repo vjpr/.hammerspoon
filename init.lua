@@ -8,6 +8,8 @@ print('-------------------------------------------------------------------------
 -- Paths
 --------------------------------------------------------------------------------
 
+-- 
+-- From https://github.com/Hammerspoon/hammerspoon/issues/363#issuecomment-138720696
 package.path = "/usr/local/share/lua/5.3/?.lua;/usr/local/share/lua/5.3/?/init.lua;"..package.path
 -- Allow requiring files relative to this one.
 package.path = "../?.lua;"..package.path
@@ -54,3 +56,11 @@ end
 --------------------------------------------------------------------------------
 
 hs.alert.show("Config loaded")
+
+--------------------------------------------------------------------------------
+
+-- Pause SoundCloud native app.
+-- TODO(vjpr)
+
+-- local soundCloud = hs.application.find('SoundCloud')
+-- print soundCloud
