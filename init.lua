@@ -5,10 +5,15 @@ print('-------------------------------------------------------------------------
 -- See here for a cool config: https://gist.github.com/sprig/7cfb5664fc52fda8f2a88529ce94f49f
 -- And tips on using luarocks modules.
 
+-- Config
+--------------------------------------------------------------------------------
+
+local enableShiftUpToParens = true
+
 -- Paths
 --------------------------------------------------------------------------------
 
--- 
+--
 -- From https://github.com/Hammerspoon/hammerspoon/issues/363#issuecomment-138720696
 package.path = "/usr/local/share/lua/5.3/?.lua;/usr/local/share/lua/5.3/?/init.lua;"..package.path
 -- Allow requiring files relative to this one.
@@ -36,7 +41,7 @@ require('./tabs-outliner')
 require('push-window')
 -- require('util')
 require('./debug')
-require('./shift-up-to-parens')
+if (enableShiftUpToParens) then require('./shift-up-to-parens') end
 require('./quip-backtick')
 
 -- NOTE: We do this with a custom keyboard. It's easier.
