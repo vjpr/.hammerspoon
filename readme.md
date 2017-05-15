@@ -13,6 +13,11 @@ Hammerspoon bundles lua@5.3 at the moment.
 You should install lua@5.3 with homebrew here:
 https://github.com/Hammerspoon/hammerspoon/issues/363#issuecomment-138718726
 
+```
+brew tap homebrew/versions
+brew install lua53
+```
+
 This will allow you to use luarocks.
 
 ## Luarocks
@@ -21,6 +26,12 @@ Use `luarocks-5.3` instead of `luarocks`. E.g:
 
 ```
 luarocks-5.3 install foo
+```
+
+You must install:
+
+```
+luarocks-5.3 install inspect
 ```
 
 # Usage
