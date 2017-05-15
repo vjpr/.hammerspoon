@@ -395,7 +395,7 @@ function getSecondScreen()
   
   local targetSecondScreenSize = monitor1440p
   
-  local screenEastSize = screenEast:fullFrame().size
+  local screenEastSize = screenEast and screenEast:fullFrame().size or null
   
   if (compareSize(screenEastSize, targetSecondScreenSize)) then
     -- Second screen is east of center screen.
