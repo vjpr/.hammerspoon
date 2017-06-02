@@ -1,5 +1,7 @@
 require('util')
 
+local enableAutoLayout = false
+
 -- Screens table helpers.
 ------------------------------------------------------------------------------
 
@@ -59,7 +61,9 @@ end
 
 function handleScreenWatcher()
   lastScreens = hs.screen.allScreens()
-  debouncedLayout('screen')
+  if (enableAutoLayout) then
+    debouncedLayout('screen')
+  end
 end
 
 -- NOTE: Can also detect when active screen changes with `newWithActiveScreen` if needed.
@@ -76,7 +80,9 @@ function handleCaffeinateEvent(event)
     print('system did wake')
     if hasScreensChanged() then
       print('screens have changed')
-      debouncedLayout('systemDidWake')
+      if (enableAutoLayout) then
+        debouncedLayout('systemDidWake')
+      end
     else
       print('screens have NOT changed. not laying out.')
     end
@@ -102,6 +108,12 @@ end)
 
 hs.hotkey.bind({"cmd", "alt", "ctrl"}, "N", function()
   universalLayout()
+end)
+
+local pushWindowTwoThirds = false
+
+hs.hotkey.bind({"cmd", "alt", "ctrl"}, "B", function()
+  pushWindowTwoThirds = not pushWindowTwoThirds
 end)
 
 ------------------------------------------------------------------------------
@@ -537,14 +549,21 @@ function screenLayoutPrimary()
   
   local chrome1,chrome2 = hs.application.find'Google Chrome'
   
+  local layoutRight
+  if pushWindowTwoThirds then
+    layoutRight = hs.layout.right50
+  else
+    layoutRight = positions.right66
+  end
+  
   local windowLayout = {
-    {titles.safari, nil, laptopScreen, hs.layout.right50, nil, nil},
-    {chrome1, nil, laptopScreen, hs.layout.right50, nil, nil},
-    {chrome2, nil, laptopScreen, hs.layout.right50, nil, nil},
+    {titles.safari, nil, laptopScreen, layoutRight, nil, nil},
+    {chrome1, nil, laptopScreen, layoutRight, nil, nil},
+    {chrome2, nil, laptopScreen, layoutRight, nil, nil},
     {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
-    {titles.iterm, nil, laptopScreen, hs.layout.right50, nil, nil},
+    {titles.iterm, nil, laptopScreen, layoutRight, nil, nil},
   }
   return windowLayout
 end

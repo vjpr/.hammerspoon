@@ -6,6 +6,23 @@
 
 --------------------------------------------------------------------------------
 
+-- Shortcut to disable it.
+
+local shiftUpToParensEnabled = true
+local lastAlert = null
+
+-- TODO(vjpr): We could make this check if SecureEntry is enabled instead.
+hs.hotkey.bind({"cmd", "alt"}, "P", function()
+  shiftUpToParensEnabled = not shiftUpToParensEnabled
+  local str = shiftUpToParensEnabled and "Enabled" or "Disabled"
+  if lastAlert then
+    hs.alert.closeSpecific(lastAlert)
+  end
+  lastAlert = hs.alert(str .. " shift up to parens")
+end)
+
+--------------------------------------------------------------------------------
+
 local fastKeyStroke = function(modifiers, character)
   local event = require("hs.eventtap").event
   event.newKeyEvent(modifiers, string.lower(character), true):post()
@@ -129,6 +146,8 @@ end
 
 -- TODO(vjpr): Remove module.leftShiftWasPressed. Use associative array for whether to ignore.
 module.eventwatcher1 = hs.eventtap.new({hs.eventtap.event.types.keyUp, hs.eventtap.event.types.keyDown, hs.eventtap.event.types.flagsChanged}, function(e)
+    if not shiftUpToParensEnabled then return end
+    
     local flags = e:getFlags()
     local shiftInfo = whichShift(e)
     local shiftSide = shiftInfo[1]
@@ -180,6 +199,7 @@ module.eventwatcher2 = hs.eventtap.new({
   hs.eventtap.event.types.leftMouseDown,
   hs.eventtap.event.types.rightMouseDown
 }, function(e)
+  if not shiftUpToParensEnabled then return end
 
     local flags = e:getFlags()
     local keyCode = e:getKeyCode()

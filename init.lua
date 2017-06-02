@@ -69,3 +69,12 @@ hs.alert.show("Config loaded")
 
 -- local soundCloud = hs.application.find('SoundCloud')
 -- print soundCloud
+
+--------------------------------------------------------------------------------
+
+-- TODO(vjpr): Launch apps by keyboard shortcut.
+
+-- hs.hotkey.new({"esc"}, "q", nil, function()
+--   local app = hs.application.find("Quip")
+--   app:activate()
+-- end)
