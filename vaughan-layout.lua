@@ -114,6 +114,11 @@ local pushWindowTwoThirds = false
 
 hs.hotkey.bind({"cmd", "alt", "ctrl"}, "B", function()
   pushWindowTwoThirds = not pushWindowTwoThirds
+  if (pushWindowTwoThirds) then
+    hs.alert.show("Push window = 2/3")
+  else
+    hs.alert.show("Push window = 1/2")
+  end
 end)
 
 ------------------------------------------------------------------------------
@@ -438,8 +443,8 @@ function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
     {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
-    {chrome1, nil, centerScreen, hs.layout.left50, nil, nil},
-    {chrome2, nil, centerScreen, hs.layout.left50, nil, nil},
+    {chrome1, nil, centerScreen, hs.layout.right50, nil, nil},
+    {chrome2, nil, centerScreen, hs.layout.right50, nil, nil},
     {titles.safari, nil, centerScreen, hs.layout.right50, nil, nil},
     {titles.sublime, nil, laptopScreen, positions.centeredAlt, nil, nil},
     {titles.dash, nil, laptopScreen, positions.centeredAlt, nil, nil},
@@ -550,7 +555,7 @@ function screenLayoutPrimary()
   local chrome1,chrome2 = hs.application.find'Google Chrome'
   
   local layoutRight
-  if pushWindowTwoThirds then
+  if not pushWindowTwoThirds then
     layoutRight = hs.layout.right50
   else
     layoutRight = positions.right66
@@ -560,7 +565,7 @@ function screenLayoutPrimary()
     {titles.safari, nil, laptopScreen, layoutRight, nil, nil},
     {chrome1, nil, laptopScreen, layoutRight, nil, nil},
     {chrome2, nil, laptopScreen, layoutRight, nil, nil},
-    {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
+    {titles.intellij, nil, laptopScreen, hs.layout.left50, nil, nil},
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.iterm, nil, laptopScreen, layoutRight, nil, nil},

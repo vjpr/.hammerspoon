@@ -36,13 +36,15 @@ hs.application.enableSpotlightForNameSearches(true)
 
 require('./config')
 require('./vaughan-layout')
-
-require('./tabs-outliner')
-require('push-window')
+tabsOutlinerModule = require('./tabs-outliner')
 -- require('util')
 require('./debug')
 if (enableShiftUpToParens) then require('./shift-up-to-parens') end
 require('./quip-backtick')
+pusher = require('push-window')
+
+-- NOTE: Relies on global exports from tabsOutliner/push-window.
+hotkeys = require('./hotkeys')
 
 -- NOTE: We do this with a custom keyboard. It's easier.
 -- require('swap-bracket-brace')

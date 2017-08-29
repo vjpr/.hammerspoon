@@ -44,9 +44,10 @@ function tabsOutliner()
   local chromeApp1, chromeApp2 = hs.application.find'Google Chrome'
 
   local chromeCanary
-    -- "com.google.Chrome"
-  if chromeApp1 and chromeApp1:bundleID() == "com.google.Chrome.canary" then chromeCanary = chromeApp1 end
-  if chromeApp2 and chromeApp2:bundleID() == "com.google.Chrome.canary" then chromeCanary = chromeApp2 end
+  -- local chromeBundleId = "com.google.Chrome.canary"
+  local chromeBundleId = "com.google.Chrome"
+  if chromeApp1 and chromeApp1:bundleID() == chromeBundleId then chromeCanary = chromeApp1 end
+  if chromeApp2 and chromeApp2:bundleID() == chromeBundleId then chromeCanary = chromeApp2 end
 
   local chromeWindow = chromeCanary:focusedWindow() -- TODO: ...that is not Tabs Outliner.
   chromeWindow:moveToUnit(hs.geometry(outlinerWidth, 0, chromeWidth, 1))
@@ -60,11 +61,15 @@ function tabsOutliner()
 
 end
 
-hs.hotkey.bind({"cmd", "alt", "ctrl"}, "home", function()
-  tabsOutliner()
-end)
+local exports = {}
 
-hs.hotkey.bind({"cmd", "alt", "ctrl"}, "end", function()
+exports.pushLeft = function()
+  tabsOutliner()
+end
+
+exports.pushRight = function()
   local window = hs.window.focusedWindow()
   window:moveToUnit(hs.geometry(outlinerWidth + chromeWidth, 0, chromeRightWidth, 1))
-end)
+end
+
+return exports
