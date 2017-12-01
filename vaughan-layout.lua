@@ -130,8 +130,8 @@ end)
 
 positions = {
   maximized = hs.layout.maximized,
-  centered = {x=0.20, y=0.20, w=0.8, h=0.8},
-  centeredAlt = {x=0.10, y=0.10, w=0.8, h=0.8},
+  centered = {x=0.2, y=0.2, w=0.6, h=0.6},
+  centeredAlt = {x=0.1, y=0.1, w=0.8, h=0.8},
 
   left34 = {x=0, y=0, w=0.34, h=1},
   left50 = hs.layout.left50,
@@ -151,6 +151,7 @@ positions = {
   lower50Right50 = {x=0.5, y=0.5, w=0.5, h=0.5}
 }
 
+-- app titles
 titles = {
   intellij = 'IntelliJ IDEA-EAP',
   appCode = 'AppCode-EAP',
@@ -175,10 +176,11 @@ commonWindowLayout = {
   {'Messenger', nil, laptopScreen, positions.right50, nil, nil},
   {'Quip', nil, laptopScreen, positions.right50, nil, nil},
   {'Slack', nil, laptopScreen, positions.right50, nil, nil},
-  {'Spotify', nil, laptopScreen, positions.centered, nil, nil},
-  {'iTunes', nil, laptopScreen, positions.centered, nil, nil},
-  {titles.outlook, nil, laptopScreen, positions.centered, nil, nil},
-  {titles.calendar, nil, laptopScreen, positions.centered, nil, nil},
+  {'Spotify', nil, laptopScreen, positions.centeredAlt, nil, nil},
+  {titles.sourceTree, nil, laptopScreen, positions.centeredAlt, nil, nil},
+  {'iTunes', nil, laptopScreen, positions.centeredAlt, nil, nil},
+  {titles.outlook, nil, laptopScreen, positions.centeredAlt, nil, nil},
+  {titles.calendar, nil, laptopScreen, positions.centeredAlt, nil, nil},
   {titles.finder, nil, laptopScreen, positions.left50, nil, nil},
 }
 
