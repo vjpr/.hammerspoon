@@ -34,9 +34,9 @@ local timer = null
 local DEBOUNCE_DELAY = 5
 
 function debouncedLayout(reason)
-  
+
   print('screens changed!')
-  
+
   if (timer) then
     -- `stop` means callback will not be called.
     timer:stop()
@@ -53,7 +53,7 @@ function debouncedLayout(reason)
     elseif reason == 'screensDidUnlock' then
       hs.alert.show("Screens did unlock")
     end
-    
+
     universalLayout()
   end)
 
@@ -110,7 +110,9 @@ hs.hotkey.bind({"cmd", "alt", "ctrl"}, "N", function()
   universalLayout()
 end)
 
-local pushWindowTwoThirds = false
+-- Determines whether to layout windows 2/3 or 1/2.
+-- We have a separate shortcut for "pushing 2/3" now so name is probably incorrect now.
+local pushWindowTwoThirds = true
 
 hs.hotkey.bind({"cmd", "alt", "ctrl"}, "B", function()
   pushWindowTwoThirds = not pushWindowTwoThirds
@@ -138,6 +140,7 @@ positions = {
   right34 = {x=0.66, y=0, w=0.34, h=1},
   right50 = hs.layout.right50,
   right66 = {x=0.34, y=0, w=0.66, h=1},
+  right65 = {x=0.35, y=0, w=0.65, h=1},
 
   upper50 = {x=0, y=0, w=1, h=0.5},
   upper50Left50 = {x=0, y=0, w=0.5, h=0.5},
@@ -164,6 +167,7 @@ titles = {
   outlook = 'Microsoft Outlook',
   calendar = 'Calendar',
   finder = 'Finder',
+  whatsApp = 'WhatsApp',
 }
 
 commonWindowLayout = {
@@ -177,6 +181,31 @@ commonWindowLayout = {
   {titles.calendar, nil, laptopScreen, positions.centered, nil, nil},
   {titles.finder, nil, laptopScreen, positions.left50, nil, nil},
 }
+
+------------------------------------------------------------------------------
+
+function printAllChromeWindows()
+  local app = hs.application.find('Google Chrome')
+  print('appWindows', dump(app:allWindows()))
+end
+
+function findChromeWindow(windowTitleToFind)
+  local res = function(appName)
+    -- print('appName', appName)
+    if appName == 'Google Chrome' then
+      local app = hs.application.find('Google Chrome')
+      if not app then return end
+      -- TODO: App is returning nil.
+      -- print('app', app)
+      -- print('match', win:title():match(windowTitleToFind))
+      -- return win:title():match(windowTitle .. '.*')
+      local windows = {app:findWindow('.*' .. windowTitleToFind .. '.*')} -- NOTE: `{fn()}` puts multiple return values in table
+      print('matching windows:', dump(windows))
+      return windows or nil
+    end
+  end
+  return res
+end
 
 ------------------------------------------------------------------------------
 
@@ -206,7 +235,7 @@ local projector720p = hs.geometry.new('1280x720')
 function detectScreenType(screen)
   local screenFrame = screen:fullFrame()
   local screenSize = screenFrame.size
-  
+
   local out
 
   if (compareSize(screenSize, iPadDuetStandard)) then
@@ -220,11 +249,11 @@ function detectScreenType(screen)
   elseif (screenSize:equals(projector720p)) then
     out = '720p'
   end
-  
+
   print('w', screenSize.w, 'h', screenSize.h, name)
-  
+
   return name
-  
+
 end
 
 -- function getAllScreens()
@@ -276,15 +305,15 @@ function universalLayout()
   local allScreens = hs.screen.allScreens()
   local screenCount = tableLength(allScreens)
   local windowLayout
-  
+
   print('Screen count:', screenCount)
   print('Dimensions:', dimensions)
-  
+
   -- TODO(vjpr): Maybe use find to improve code.
   -- http://www.hammerspoon.org/docs/hs.screen.html#find.
-  
+
   if (screenCount == 5) then
-    
+
     if (isIpadConnected()) then
       -- a. Laptop, Main, Secondary, Tertiary, iPad
       windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
@@ -292,9 +321,9 @@ function universalLayout()
       -- b. Laptop, Main, Secondary, Tertiary, Projector
       windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
     end
-  
+
   elseif (screenCount == 4) then
-    
+
     if (isIpadConnected()) then
       -- a. Laptop, Main, Secondary, iPad
       windowLayout = screenLayoutPrimaryAnd2xU2515H()
@@ -306,9 +335,9 @@ function universalLayout()
       -- TODO(vjpr)
       windowLayout = screenLayoutPrimaryAnd2xU2515H()
     end
-  
+
   elseif (screenCount == 3) then
-    
+
     if (isIpadConnected()) then
       -- a. Laptop, Main, iPad
       windowLayout = screenLayoutPrimaryAnd1xU2515H()
@@ -320,12 +349,13 @@ function universalLayout()
       -- c. Laptop, Main, Secondary
       windowLayout = screenLayoutPrimaryAnd2xU2515H()
     end
-  
+
   elseif (screenCount == 2) then
 
     local secondScreen = allScreens[2]
     local secondScreenSize = secondScreen:fullFrame().size
-    if (compareSize(secondScreenSize, iPadScreen)) then
+
+    if (compareSize(secondScreenSize, iPadDuetStandard)) then
       -- a. Laptop, iPad (Duet)
       windowLayout = screenLayoutPrimaryAndIPad()
     elseif (compareSize(secondScreenSize, projector720p)) then
@@ -338,19 +368,20 @@ function universalLayout()
       -- d. Laptop, Main
       windowLayout = screenLayoutPrimaryAnd1xU2515H()
     end
-    
+
   elseif (screenCount == 1) then
-    
+
     -- Only laptop display.
     windowLayout = screenLayoutPrimary()
-    
+
   end
 
   local layout = {}
   tableConcat(layout, commonWindowLayout)
   tableConcat(layout, windowLayout)
-  hs.layout.apply(layout)
-  
+  -- hs.layout.apply(layout)
+  hs.layout.apply(layout, string.match)
+
   arrangeItermWindows(screenCount)
 
 end
@@ -368,15 +399,15 @@ function arrangeItermWindows(screenCount)
     -- [`hs.layout.apply` and multiple windows of same application](https://github.com/Hammerspoon/hammerspoon/issues/298)
     local iTermWindows = app:allWindows()
     local gridSize
-    
+
     -- 2x2 grid
     -- local positions = {positions.upper50Left50, positions.upper50Right50, positions.lower50Left50, positions.lower50Right50}
     -- gridSize = 4
-    
+
     -- 1x1 next to each other
     local positionDefs = {positions.left50, positions.right50}
     gridSize = 2
-    
+
     local i = 0
     for i, win in pairs(iTermWindows) do
       -- iterate between
@@ -385,35 +416,35 @@ function arrangeItermWindows(screenCount)
       -- print(win)
       win:move(position, rightScreen)
     end
-  
+
     -- Main window on left, other windows stacked on right.
     app:mainWindow():move(positions.left50, rightScreen)
   end
-  
+
 end
 
 ------------------------------------------------------------------------------
 
 function getSecondScreen()
   local centerScreen = hs.screen.primaryScreen():toNorth()
-  
+
   -- TODO(vjpr): Not robust.
   if (not centerScreen) then
     local allScreens = hs.screen.allScreens()
     return allScreens[2], allScreens[3]
   end
-  
+
   -- strict - disregard screens that lie completely above or below this one
   local strict = true
   local screenEast = centerScreen:toEast(null, strict)
   local screenWest = centerScreen:toWest(null, strict)
   local secondScreen
   local thirdScreen
-  
+
   local targetSecondScreenSize = monitor1440p
-  
+
   local screenEastSize = screenEast and screenEast:fullFrame().size or null
-  
+
   if (compareSize(screenEastSize, targetSecondScreenSize)) then
     -- Second screen is east of center screen.
     secondScreen = screenEast
@@ -423,9 +454,9 @@ function getSecondScreen()
     secondScreen = screenWest
     thirdScreen = screenEast
   end
-  
+
   return secondScreen, thirdScreen
-  
+
 end
 
 function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
@@ -434,17 +465,60 @@ function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
 
   local centerScreen = hs.screen.primaryScreen():toNorth()
   local secondScreen, thirdScreen = getSecondScreen()
-  
+
   print(secondScreen, thirdScreen)
 
   local chrome1,chrome2 = hs.application.find'Google Chrome'
+  print(chrome1:allWindows())
+
+  -- Detect a Chrome Bookmark App window.
+  -- NOTE: Tried `:subrole` and `:role` - didn't work.
+  -- NOTE: `tabCount` is nil.
+  function chromeLayout(win)
+    if win:tabCount() == nil then
+      -- It is probably a Chrome Bookmark App window.
+      win:moveToScreen(laptopScreen)
+      return positions.centeredAlt
+    else
+      win:moveToScreen(centerScreen)
+      return hs.layout.right50
+    end
+  end
+
+  function chromeScreen(win)
+    if win:tabCount() == nil then
+      -- It is probably a Chrome Bookmark App window.
+      return laptopScreen
+    else
+      return centerScreen
+    end
+  end
+
+  -- Using `windowTitleComparator` instead.
+  function findIntellijProject(appName)
+    if appName == 'IntelliJ IDEA-EAP' then
+      local app = hs.application.find('IntelliJ')
+      if not app then return end
+      -- TODO: App is returning nil.
+      -- print('app', app)
+      print('appWindows', dump(app:allWindows()))
+      -- print('match', win:title():match('dev-notes'))
+      -- return win:title():match('dev-notes.*')
+      local win = {app:findWindow('.*notes.*')}
+      print('win', win)
+      return win or nil
+    end
+  end
 
   local windowLayout = {
     {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
+    -- Must go below to override the above.
+    -- NOTE: `hs.layout.top50` not working.
+    {titles.intellij, findIntellijProject, thirdScreen, hs.layout.maximized, nil, nil},
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
-    {chrome1, nil, centerScreen, hs.layout.right50, nil, nil},
-    {chrome2, nil, centerScreen, hs.layout.right50, nil, nil},
+    {chrome1, nil, nil, chromeLayout, nil, nil},
+    {chrome2, nil, nil, chromeLayout, nil, nil},
     {titles.safari, nil, centerScreen, hs.layout.right50, nil, nil},
     {titles.sublime, nil, laptopScreen, positions.centeredAlt, nil, nil},
     {titles.dash, nil, laptopScreen, positions.centeredAlt, nil, nil},
@@ -453,7 +527,7 @@ function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
     -- TODO(vjpr): If atom is maximized before being moved, this does not work.
     {titles.atom, nil, thirdScreen, hs.layout.maximized, nil, nil},
     {titles.atomBeta, nil, thirdScreen, hs.layout.maximized, nil, nil},
-    
+
     {titles.sourceTree, nil, centerScreen, positions.centered, nil, nil},
     -- TODO: One on each monitor. windowTitleComparator?
     -- {titles.iterm, nil, rightScreen, hs.layout.right50, nil, nil}, -- Done manually.
@@ -500,7 +574,7 @@ function screenLayoutPrimaryAnd1xU2515H()
   local laptopScreen = "Color LCD" -- hs.screen.primaryScreen()
   local centerScreen = hs.screen.allScreens()[2]
   local rightScreen = hs.screen.allScreens()[3]
-  
+
   local chrome1,chrome2 = hs.application.find'Google Chrome'
 
   local windowLayout = {
@@ -526,21 +600,67 @@ end
 
 function screenLayoutPrimaryAndIPad()
   hs.alert.show("screensPrimaryAndIPad layout")
-  local laptopScreen = "Color LCD" -- hs.screen.primaryScreen()
+  --local laptopScreen = "Color LCD" -- hs.screen.primaryScreen()
+  local laptopScreen = hs.screen.primaryScreen()
   local iPadScreen = hs.screen.allScreens()[2]
-  
+
   local chrome1,chrome2 = hs.application.find'Google Chrome'
-  
+
+  local layoutRight
+  if not pushWindowTwoThirds then
+    layoutRight = hs.layout.right50
+  else
+    layoutRight = positions.right66
+  end
+
+  ---------------------------
+  -- TODO(vjpr): Extract!
+  -- Duplicated and modified from above
+
+  -- Detect a Chrome Bookmark App window.
+  -- NOTE: Tried `:subrole` and `:role` - didn't work.
+  -- NOTE: `tabCount` is nil.
+  function chromeLayout(win)
+    if win:tabCount() == nil then
+      -- It is probably a Chrome Bookmark App window.
+      win:moveToScreen(laptopScreen)
+      return positions.centeredAlt
+    else
+      win:moveToScreen(laptopScreen)
+      return layoutRight
+    end
+  end
+
+  -- NOT USED
+  function chromeScreen(win)
+    if win:tabCount() == nil then
+      -- It is probably a Chrome Bookmark App window.
+      return laptopScreen
+    else
+      return laptopScreen
+    end
+  end
+
+  ---------------------------
+
+  printAllChromeWindows()
+
   local windowLayout = {
     {titles.safari, nil, laptopScreen, hs.layout.right70, nil, nil},
-    {chrome1, nil, laptopScreen, hs.layout.right70, nil, nil},
-    {chrome2, nil, laptopScreen, hs.layout.right70, nil, nil},
+    {chrome1, nil, nil, chromeLayout, nil, nil},
+    --{chrome2, nil, laptopScreen, hs.layout.right70, nil, nil},
     {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.appCode, nil, laptopScreen,hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.sublime, nil, laptopScreen, hs.layout.centered, nil, nil},
     {titles.atom, nil, laptopScreen, hs.layout.left50, nil, nil},
     {titles.atomBeta, nil, laptopScreen, hs.layout.left50, nil, nil},
+    {titles.slack, nil, laptopScreen, hs.layout.right50, nil, nil},
+
+    -- NOTE: Chrome app windows are detected and centered by default.
+    {chrome1, findChromeWindow('WhatsApp'), laptopScreen, hs.layout.right50, nil, nil},
+    {chrome1, findChromeWindow('Messenger'), laptopScreen, hs.layout.right50, nil, nil},
+
     {titles.iterm, nil, iPadScreen, hs.layout.maximized, nil, nil},
   }
   return windowLayout
@@ -551,16 +671,16 @@ end
 function screenLayoutPrimary()
   hs.alert.show("screensPrimary layout")
   local laptopScreen = "Color LCD" -- hs.screen.primaryScreen()
-  
+
   local chrome1,chrome2 = hs.application.find'Google Chrome'
-  
+
   local layoutRight
   if not pushWindowTwoThirds then
     layoutRight = hs.layout.right50
   else
     layoutRight = positions.right66
   end
-  
+
   local windowLayout = {
     {titles.safari, nil, laptopScreen, layoutRight, nil, nil},
     {chrome1, nil, laptopScreen, layoutRight, nil, nil},

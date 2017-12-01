@@ -36,13 +36,23 @@ luarocks-5.3 install inspect
 
 # Usage
 
+⌘ ⌥ ⇧ ⌃ ⇪  Fn ⟵ ⟶ ↑ ↓
+
 ## Useful key bindings
 
-`cmd-alt-ctrl-n` = Layout all windows
+`⌘ ⌥ ⌃ n` = Layout all windows
 
-`cmd-alt-ctrl-left/right` =  Push to left or right window
+`⌘ ⌥ ⌃ ⟵/⟶` = Push to left or right window
 
-`fn-ctrl-shift/right` =  Push to left or right screen
+`Fn ⌘ ⌥ ⌃ ⟵/⟶` = Push to left 2/3 or right 2/3 of window
+
+`Fn ⌃ ⇧ ⟶` = Push to left or right screen
+
+## Config
+
+`⌘ ⌥ ⌃ b` = Toggle between 2/3 or 1/2 screen width for windows wheen using "layout all windows" shortcut.
+
+`⌘ ⌥ p` = Disable
 
 # Development
 

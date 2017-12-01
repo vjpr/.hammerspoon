@@ -17,7 +17,13 @@ exports.twoThirdsLeft = function()
 end
 
 exports.twoThirdsRight = function()
-  local g = hs.geometry.unitrect(0.4,0,0.6,1)
+  -- 0.66:
+  -- Means github.com with repo tree view extension fits perfectly.
+  -- Also, it allows you to see IntelliJ with slim project tool window open and 80 char editor width.
+  -- Only slightly cuts into it.
+
+  local width = 0.66
+  local g = hs.geometry.unitrect(1-width,0,width,1)
   hs.window.focusedWindow():moveToUnit(g)
 end
 
