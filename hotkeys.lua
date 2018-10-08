@@ -10,8 +10,30 @@ hs.hotkey.bind({"ctrl", "alt", "cmd"}, "right", function()
   end
 end)
 
+hs.hotkey.bind({"ctrl", "alt", "cmd"}, "j", function()
+  pusher.oneThirdLeft()
+end)
+
+hs.hotkey.bind({"ctrl", "alt", "cmd"}, "k", function()
+  pusher.oneThirdMiddle()
+end)
+
+hs.hotkey.bind({"ctrl", "alt", "cmd"}, "l", function()
+  pusher.oneThirdRight()
+end)
+
+hs.hotkey.bind({"ctrl", "alt", "cmd"}, "{", function()
+  pusher.pushOneThirdLeft()
+end)
+
+hs.hotkey.bind({"ctrl", "alt", "cmd"}, "}", function()
+  pusher.pushOneThirdRight()
+end)
+
+local allowTabOutliner = false
+
 hs.hotkey.bind({"ctrl", "alt", "cmd"}, "home", function()
-  if #hs.screen.allScreens() < 3 then
+  if not allowTabOutliner or #hs.screen.allScreens() < 3 then
     pusher.twoThirdsLeft()
   else
     tabsOutlinerModule.pushLeft()
@@ -19,7 +41,7 @@ hs.hotkey.bind({"ctrl", "alt", "cmd"}, "home", function()
 end)
 
 hs.hotkey.bind({"ctrl", "alt", "cmd"}, "end", function()
-  if #hs.screen.allScreens() < 3 then
+  if not allowTabOutliner or #hs.screen.allScreens() < 3 then
     pusher.twoThirdsRight()
   else
     tabsOutlinerModule.pushRight()

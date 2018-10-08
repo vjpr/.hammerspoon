@@ -1,4 +1,5 @@
 require('util')
+ax = require("hs._asm.axuielement")
 
 local enableAutoLayout = false
 
@@ -202,7 +203,7 @@ function findChromeWindow(windowTitleToFind)
       -- print('match', win:title():match(windowTitleToFind))
       -- return win:title():match(windowTitle .. '.*')
       local windows = {app:findWindow('.*' .. windowTitleToFind .. '.*')} -- NOTE: `{fn()}` puts multiple return values in table
-      print('matching windows:', dump(windows))
+      print('matching windows:', windowTitleToFind, dump(windows))
       return windows or nil
     end
   end
@@ -231,7 +232,10 @@ local inspect = require('inspect')
 local laptopDisplay = hs.geometry.new('1920x1200')
 local monitor1440p = hs.geometry.new('2560x1440')
 local monitor1080pVertical = hs.geometry.new('1080x1920')
+local monitor1200pVertical = hs.geometry.new('1200x1920')
 local iPadDuetStandard = hs.geometry.new('1024x768')
+local iPadDuetRetina = hs.geometry.new('1366x1024')
+local iPadDuetResOpt2of5 = hs.geometry.new('1112x834') -- Old iPad 2/5 res setting.
 local projector720p = hs.geometry.new('1280x720')
 
 function detectScreenType(screen)
@@ -272,7 +276,7 @@ function isIpadConnected()
   for _, screen in pairs(allScreens) do
     local screenFrame = screen:fullFrame()
     local screenSize = screenFrame.size
-    if (compareSize(screenSize, iPadDuetStandard)) then
+    if (compareSize(screenSize, iPadDuetStandard) or compareSize(screenSize, iPadDuetRetina) or compareSize(screenSize, iPadDuetResOpt2of5)) then
       return true
     end
   end
@@ -285,6 +289,8 @@ function isVerticalScreenConnected()
     local screenFrame = screen:fullFrame()
     local screenSize = screenFrame.size
     if (compareSize(screenSize, monitor1080pVertical)) then
+      return true
+    elseif (compareSize(screenSize, monitor1200pVertical)) then
       return true
     end
   end
@@ -349,7 +355,8 @@ function universalLayout()
       windowLayout = screenLayoutPrimaryAnd1xU2515H()
     else
       -- c. Laptop, Main, Secondary
-      windowLayout = screenLayoutPrimaryAnd2xU2515H()
+      -- windowLayout = screenLayoutPrimaryAnd2xU2515H()
+      windowLayout = screenLayoutPrimaryAnd2xU2515HAnd1xLG()
     end
 
   elseif (screenCount == 2) then
@@ -358,6 +365,9 @@ function universalLayout()
     local secondScreenSize = secondScreen:fullFrame().size
 
     if (compareSize(secondScreenSize, iPadDuetStandard)) then
+      -- a. Laptop, iPad (Duet)
+      windowLayout = screenLayoutPrimaryAndIPad()
+    elseif (compareSize(secondScreenSize, iPadDuetRetina)) then
       -- a. Laptop, iPad (Duet)
       windowLayout = screenLayoutPrimaryAndIPad()
     elseif (compareSize(secondScreenSize, projector720p)) then
@@ -393,9 +403,21 @@ function arrangeItermWindows(screenCount)
   local app = hs.application.find("iTerm2")
   if not app then return end
 
-  if (screenCount == 3 or screenCount == 4) then
+  print("is ipad connected?", isIpadConnected(), screenCount)
 
+  if ((screenCount == 3 and not isIpadConnected()) or screenCount == 4) then
+
+    -- NOTE(vjpr): Used to use this but stopped working...
+    --   Maybe something to do with `s.screen.strictScreenInDirection`.
     local rightScreen = hs.screen.primaryScreen():toEast()
+
+    -- NOTE(vjpr): Wierd, I know, but nothing else would work. Observed bug in Sydney.
+    local topScreen = hs.screen.primaryScreen():toNorth()
+    local targetScreen = topScreen:toEast()
+
+    --local targetScreen = rightScreen
+
+    -- print("foo", hs.screen.primaryScreen(), targetScreen, targetScreen:toEast())
 
     -- Workaround while waiting for
     -- [`hs.layout.apply` and multiple windows of same application](https://github.com/Hammerspoon/hammerspoon/issues/298)
@@ -414,13 +436,25 @@ function arrangeItermWindows(screenCount)
     for i, win in pairs(iTermWindows) do
       -- iterate between
       -- local position = positionDefs[i % gridSize + 1] -- `+1` because Lua indexes start at 1.
+
+      -- Move all windows to right.
       local position = positions.right50
-      -- print(win)
-      win:move(position, rightScreen)
+
+      -- Move first window to left.
+      -- NOTE: In `iTerm > Preferences > Appearance` select `Show window number`.
+      local regex = '^1.*'
+      print('match', win:title():match(regex))
+      if (win:title():match(regex)) then
+        position = positions.left50
+      end
+
+      --print(dump(win), targetScreen)
+      win:move(position, targetScreen)
     end
 
     -- Main window on left, other windows stacked on right.
-    app:mainWindow():move(positions.left50, rightScreen)
+    -- DISABLED: We read the name of tabs now.
+    --app:mainWindow():move(positions.left50, targetScreen)
   end
 
 end
@@ -468,16 +502,25 @@ function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
   local centerScreen = hs.screen.primaryScreen():toNorth()
   local secondScreen, thirdScreen = getSecondScreen()
 
-  print(secondScreen, thirdScreen)
+  print('secondScreen', secondScreen)
+  print('thirdScreen', thirdScreen)
+  -- Fallback if we don't have vertical screen.
+  if not thirdScreen then thirdScreen = laptopScreen end
 
   local chrome1,chrome2 = hs.application.find'Google Chrome'
-  print(chrome1:allWindows())
+  -- print('CHROME WINDOWS')
+  -- print(dump(chrome1:allWindows()))
 
   -- Detect a Chrome Bookmark App window.
   -- NOTE: Tried `:subrole` and `:role` - didn't work.
   -- NOTE: `tabCount` is nil.
+  -- NOTE: `tabCount` has stopped working with new version of Chrome.
   function chromeLayout(win)
-    if win:tabCount() == nil then
+    local app = win:application()
+    -- local tabCount = win:tabCount()
+    local axWindow = ax.windowElement(win)
+    local hasTabs = next(axWindow:elementSearch({role="AXTabGroup"})) ~= nil
+    if not hasTabs then
       -- It is probably a Chrome Bookmark App window.
       win:moveToScreen(laptopScreen)
       return positions.centeredAlt
@@ -515,7 +558,7 @@ function screenLayoutPrimaryAnd2xU2515HAnd1xLG()
   local windowLayout = {
     {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
     -- Must go below to override the above.
-    -- NOTE: `hs.layout.top50` not working.
+    -- NOTE: `hs.layout.top50` not working. It makes it too wide. Need a custom resizer.
     {titles.intellij, findIntellijProject, thirdScreen, hs.layout.maximized, nil, nil},
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
@@ -555,7 +598,7 @@ function screenLayoutPrimaryAnd2xU2515H()
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {chrome1, nil, centerScreen, hs.layout.left50, nil, nil},
-    {chrome2, nil, centerScreen, hs.layout.left50, nil, nil},
+    --{chrome2, nil, centerScreen, hs.layout.left50, nil, nil},
     {titles.safari, nil, centerScreen, hs.layout.right50, nil, nil},
     {titles.sublime, nil, laptopScreen, positions.centeredAlt, nil, nil},
     {titles.dash, nil, laptopScreen, positions.centeredAlt, nil, nil},
@@ -565,26 +608,59 @@ function screenLayoutPrimaryAnd2xU2515H()
     -- TODO: One on each monitor. windowTitleComparator?
     -- {titles.iterm, nil, rightScreen, hs.layout.right50, nil, nil}, -- Done manually.
     {titles.hyper, nil, secondScreen, hs.layout.right50, nil, nil},
+
+    {chrome1, findChromeWindow('WhatsApp'), laptopScreen, hs.layout.right50, nil, nil},
+    {chrome1, findChromeWindow('Messenger'), laptopScreen, hs.layout.right50, nil, nil},
+
   }
   return windowLayout
 end
 
 ------------------------------------------------------------------------------
 
+-- Also supports iPad w/ Duet.
 function screenLayoutPrimaryAnd1xU2515H()
-  hs.alert.show("screensPrimaryAnd2xU2515H layout")
+  hs.alert.show("screensPrimaryAnd1xU2515H layout")
   local laptopScreen = "Color LCD" -- hs.screen.primaryScreen()
   local centerScreen = hs.screen.allScreens()[2]
   local rightScreen = hs.screen.allScreens()[3]
 
   local chrome1,chrome2 = hs.application.find'Google Chrome'
 
+  local layoutRight
+  if not pushWindowTwoThirds then
+    layoutRight = hs.layout.right50
+  else
+    layoutRight = positions.right66
+  end
+
+  function chromeLayout(win)
+    if win:tabCount() == nil then
+      -- It is probably a Chrome Bookmark App window.
+      win:moveToScreen(laptopScreen)
+      return positions.centeredAlt
+    else
+      win:moveToScreen(centerScreen)
+      return hs.layout.left50
+    end
+  end
+
+  function iTermLayout(win)
+    if isIpadConnected() then
+      win:moveToScreen(rightScreen)
+      return hs.layout.maximized
+    else
+      win:moveToScreen(centerScreen)
+      return layoutRight
+    end
+  end
+
   local windowLayout = {
     {titles.intellij, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.appCode, nil, laptopScreen, hs.layout.maximized, nil, nil},
     {titles.eclipse, nil, laptopScreen, hs.layout.maximized, nil, nil},
-    {chrome1, nil, centerScreen, hs.layout.left50, nil, nil},
-    {chrome2, nil, centerScreen, hs.layout.left50, nil, nil},
+    {chrome1, nil, nil, chromeLayout, nil, nil},
+    --{chrome2, nil, nil, chromeLayout, nil, nil},
     {titles.safari, nil, centerScreen, hs.layout.right50, nil, nil},
     {titles.sublime, nil, laptopScreen, positions.centered, nil, nil},
     {titles.dash, nil, laptopScreen, positions.centered, nil, nil},
@@ -592,7 +668,8 @@ function screenLayoutPrimaryAnd1xU2515H()
     {titles.atomBeta, nil, centerScreen, hs.layout.left50, nil, nil},
     {titles.sourceTree, nil, centerScreen, positions.centered, nil, nil},
     -- TODO: One on each monitor. windowTitleComparator?
-    {titles.iterm, nil, centerScreen, hs.layout.right50, nil, nil},
+    {titles.iterm, nil, nil, iTermLayout, nil, nil},
+    -- {titles.iterm, nil, centerScreen, hs.layout.right50, nil, nil},
     -- {titles.iterm, nil, centerScreen, hs.layout.right50, nil, nil},
   }
   return windowLayout
